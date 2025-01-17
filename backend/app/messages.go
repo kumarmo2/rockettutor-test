@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
+	// "fmt"
 	"net"
 )
 
@@ -10,12 +10,99 @@ import (
 //     HeartBeat = 0x02,
 //     MetricsData = 0x03,
 
+type HttpRouteMetricsPayload struct {
+	Route        string
+	Method       byte
+	StatusCode   uint16
+	ResponseTime float64
+}
+
+func DeserializeMetricsDataFromBytes(buf []byte) (*HttpRouteMetricsPayload, error) {
+	// buf must only contain the dynamic payload
+	// fmt.Println("len of payload buf: ", len(buf))
+	var statusCode uint16
+	_, err := binary.Decode(buf[0:2], binary.BigEndian, &statusCode)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("statusCode: ", statusCode)
+	var responseTime float64
+	_, err = binary.Decode(buf[2:10], binary.BigEndian, &responseTime)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("responseTime: ", responseTime)
+	var method byte
+	_, err = binary.Decode(buf[10:11], binary.BigEndian, &method)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("method: ", method)
+	route := string(buf[11:])
+	// fmt.Println(statusCode, responseTime, method, route)
+	return &HttpRouteMetricsPayload{
+		Route:        route,
+		Method:       method,
+		StatusCode:   statusCode,
+		ResponseTime: responseTime,
+	}, nil
+}
+
+// func DeserializePackageFromBytes(buf []byte, payloadSize int) (*Package, error) {
+func DeserializePackageFromBytes(buf []byte) (*Package, error) {
+	// buf: contains complete package(along with the dynamic payload)
+	// payloadSize: this is just the size of the dynamic payload
+
+	var version byte
+	_, err := binary.Decode(buf[0:1], binary.BigEndian, &version)
+	if err != nil {
+		panic(err)
+	}
+
+	// fmt.Println("version: ", version)
+	var messageType byte
+	_, err = binary.Decode(buf[1:2], binary.BigEndian, &messageType)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("messageType: ", messageType)
+	var seqNum uint32
+	_, err = binary.Decode(buf[2:6], binary.BigEndian, &seqNum)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("seqNum: ", seqNum)
+
+	var timeStamp uint64
+	_, err = binary.Decode(buf[6:14], binary.BigEndian, &timeStamp)
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("timeStamp: ", timeStamp)
+	payload := buf[14:]
+	deserializedMetricsData, err := DeserializeMetricsDataFromBytes(payload)
+	if err != nil {
+		panic(err)
+	}
+
+	pkg := &Package{
+		_deserializedMetricsData: deserializedMetricsData,
+		Version:                  version,
+		MessageType:              messageType,
+		SeqNum:                   seqNum,
+		Payload:                  payload,
+	}
+
+	return pkg, nil
+}
+
 type Package struct {
-	Version     byte // 1
-	MessageType byte //
-	SeqNum      uint32
-	Payload     []byte
-	Timestamp   uint64
+	Version                  byte // 1
+	MessageType              byte //
+	SeqNum                   uint32
+	Payload                  []byte
+	Timestamp                uint64
+	_deserializedMetricsData *HttpRouteMetricsPayload
 }
 
 func (pkg *Package) WriteToUdp(writer *net.UDPConn) error {
@@ -34,7 +121,7 @@ func (pkg *Package) WriteToUdp(writer *net.UDPConn) error {
 
 	_, err = binary.Encode(buffer[6:14], binary.BigEndian, pkg.Timestamp)
 	if err != nil {
-		fmt.Println("error while writing Timestamp")
+		// fmt.Println("error while writing Timestamp")
 		panic(err)
 	}
 	// totalBytesWritten := 6
@@ -50,12 +137,6 @@ func (pkg *Package) WriteToUdp(writer *net.UDPConn) error {
 		panic(err)
 
 	}
-	// panic("done writing package")
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// buffer[2:7]
 
 	return nil
 

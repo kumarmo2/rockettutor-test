@@ -34,21 +34,6 @@ func StartUpdApp() (chan bool, error) {
 	if err != nil {
 		panic(err)
 	}
-	// panic("done writing inti")
-
-	//     pub enum MessageType {
-	//     ConnectionInit = 0x01,
-	//     HeartBeat = 0x02,
-	//     MetricsData = 0x03,
-	// }
-	// // Expect Data Package for any package
-	// pub struct Package {
-	//     pub version: u8,
-	//     pub message_type: MessageType,
-	//     pub seq_num: u32,
-	//     pub payload: Vec<u8>,
-	//     pub time_stamp: u64,
-	// }
 
 	doneChan := make(chan bool, 1)
 
@@ -60,7 +45,14 @@ func StartUpdApp() (chan bool, error) {
 				fmt.Println("error while reading udp msg")
 				panic(err)
 			}
-			panic(fmt.Sprintf("read %v bytes from udp", n))
+
+			// ReadFromBytes(buf[0:n], n-14)
+			pkg, err := DeserializePackageFromBytes(buf[0:n])
+			if err != nil {
+				panic(err)
+			}
+			// fmt.Printf("pkg: %+v", *pkg)
+			fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
 
 		}
 
