@@ -38,6 +38,26 @@ func StartUpdApp() (chan bool, error) {
 	doneChan := make(chan bool, 1)
 
 	go func() {
+		heartBeatPackage := &Package{
+			Version:     1,
+			MessageType: 2, // heartBeat
+			SeqNum:      0,
+			Payload:     []byte{},
+			Timestamp:   uint64(time.Now().UnixNano()),
+		}
+		for {
+			err = heartBeatPackage.WriteToUdp(conn)
+			if err != nil {
+				fmt.Println("error writing heartBeatPackage", err)
+			} else {
+				fmt.Println("successfully sent the heartBeat")
+			}
+			time.Sleep(5 * time.Second)
+		}
+
+	}()
+
+	go func() {
 		buf := make([]byte, 1024)
 		for {
 			n, _, err := conn.ReadFromUDP(buf)
@@ -46,16 +66,14 @@ func StartUpdApp() (chan bool, error) {
 				panic(err)
 			}
 
-			// ReadFromBytes(buf[0:n], n-14)
 			pkg, err := DeserializePackageFromBytes(buf[0:n])
 			if err != nil {
 				panic(err)
 			}
-			// fmt.Printf("pkg: %+v", *pkg)
 			fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
+			time.Sleep(1 * time.Second)
 
 		}
-
 	}()
 
 	return doneChan, nil

@@ -23,19 +23,19 @@ func DeserializeMetricsDataFromBytes(buf []byte) (*HttpRouteMetricsPayload, erro
 	var statusCode uint16
 	_, err := binary.Decode(buf[0:2], binary.BigEndian, &statusCode)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("statusCode: ", statusCode)
 	var responseTime float64
 	_, err = binary.Decode(buf[2:10], binary.BigEndian, &responseTime)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("responseTime: ", responseTime)
 	var method byte
 	_, err = binary.Decode(buf[10:11], binary.BigEndian, &method)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("method: ", method)
 	route := string(buf[11:])
@@ -56,33 +56,33 @@ func DeserializePackageFromBytes(buf []byte) (*Package, error) {
 	var version byte
 	_, err := binary.Decode(buf[0:1], binary.BigEndian, &version)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// fmt.Println("version: ", version)
 	var messageType byte
 	_, err = binary.Decode(buf[1:2], binary.BigEndian, &messageType)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("messageType: ", messageType)
 	var seqNum uint32
 	_, err = binary.Decode(buf[2:6], binary.BigEndian, &seqNum)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("seqNum: ", seqNum)
 
 	var timeStamp uint64
 	_, err = binary.Decode(buf[6:14], binary.BigEndian, &timeStamp)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// fmt.Println("timeStamp: ", timeStamp)
 	payload := buf[14:]
 	deserializedMetricsData, err := DeserializeMetricsDataFromBytes(payload)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	pkg := &Package{
@@ -116,28 +116,22 @@ func (pkg *Package) WriteToUdp(writer *net.UDPConn) error {
 
 	_, err := binary.Encode(buffer[2:6], binary.BigEndian, pkg.SeqNum)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = binary.Encode(buffer[6:14], binary.BigEndian, pkg.Timestamp)
 	if err != nil {
-		// fmt.Println("error while writing Timestamp")
-		panic(err)
+		return err
 	}
-	// totalBytesWritten := 6
-	// // will start from six.
-	//
 	if payloadLen > 0 {
 		// write the payload and update totalBytesWritten
-		panic("not implmeneted payload encoding")
+		return err
 	}
 
 	_, err = writer.Write(buffer)
 	if err != nil {
-		panic(err)
-
+		return err
 	}
-
 	return nil
 
 }
