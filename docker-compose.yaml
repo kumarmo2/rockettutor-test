@@ -13,3 +13,16 @@ services:
       # learn more here: https://www.envoyproxy.io/docs/envoy/latest/start/docker#start-docker
       - ENVOY_UID=0
     network_mode: host
+
+  postgres:
+      image: docker.io/postgres:16-bookworm
+      restart: always
+      environment:
+        - POSTGRES_PASSWORD=admin
+        - PGDATA=/var/lib/postgresql/data/pgdata
+      ports:
+        - 5432:5432
+      volumes:
+        - ./pgdata:/var/lib/postgresql/data
+
+

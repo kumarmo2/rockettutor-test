@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,6 +13,7 @@ type Metrics struct {
 	Method       string
 	StatusCode   uint16
 	ResponseTime float64
+	CreatedOn    time.Time
 }
 
 func NewMetricsFromRawPayload(payload *HttpRouteMetricsPayload) *Metrics {
@@ -21,6 +23,7 @@ func NewMetricsFromRawPayload(payload *HttpRouteMetricsPayload) *Metrics {
 		StatusCode:   payload.StatusCode,
 		ResponseTime: payload.ResponseTime,
 		Method:       getHttpMethodString(payload.Method),
+		CreatedOn:    time.Now().UTC(),
 	}
 }
 

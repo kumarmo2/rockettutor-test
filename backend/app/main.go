@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
+
+const dbName string = "rockettutor"
 
 func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error) {
 
@@ -84,7 +89,59 @@ func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error)
 
 }
 
+func MustCreateDb(db *sqlx.DB) {
+
+	rows, err := db.Queryx("select 1 from pg_database where datname = $1", dbName)
+	if err != nil {
+		panic(err)
+	} else {
+		foundDb := rows.Next()
+		fmt.Println("foundDb: ", foundDb)
+		if !foundDb {
+			query := fmt.Sprintf("create database %v", dbName)
+			_, err = db.Queryx(query)
+			if err != nil {
+				panic(err)
+			} else {
+				fmt.Println("created db")
+			}
+		} else {
+			fmt.Println("db already present")
+		}
+	}
+}
+
+func SetupDb(db *sqlx.DB) {
+	query := `
+    create schema if not exists metrics;
+    create table if not exists metrics.metrics(
+        id uuid not null,
+        route text,
+        method text,
+        responsetime real,
+        statuscode smallint,
+        createdon timestamp not null,
+        primary key(id)
+    );
+    `
+	_, err := db.Exec(query)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(">>> db setup done")
+}
+
 func main() {
+	db, err := sqlx.Connect("postgres", "user=postgres password=admin sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	MustCreateDb(db)
+	db, err = sqlx.Connect("postgres", fmt.Sprintf("user=postgres password=admin sslmode=disable database=%v", dbName))
+	if err != nil {
+		panic(err)
+	}
+	SetupDb(db)
 
 	fmt.Println("hello world")
 	liveEventManager := newLiveEventManager[Metrics]()

@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -50,7 +48,6 @@ func (h *Handlers) HandleWebSockets(w http.ResponseWriter, r *http.Request) {
 
 		r := newOkResult[Metrics, any](&msg)
 		bytes, _ := json.Marshal(&r)
-		fmt.Println("writing message")
 		conn.WriteMessage(websocket.TextMessage, bytes)
 	}
 }
