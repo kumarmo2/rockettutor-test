@@ -1,0 +1,15 @@
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.31-latest
+    ports:
+      - 80:80
+      # - 443:443
+      # - 9901:9901
+    volumes:
+      - ./envoy-config-local.yaml:/etc/envoy/envoy.yaml
+      - ./envoy_logs:/var/log
+    environment:
+      # this is done because there were some permission issues.
+      # learn more here: https://www.envoyproxy.io/docs/envoy/latest/start/docker#start-docker
+      - ENVOY_UID=0
+    network_mode: host

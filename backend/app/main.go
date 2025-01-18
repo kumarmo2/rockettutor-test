@@ -30,6 +30,7 @@ func StartUpdApp() (chan bool, error) {
 		Payload:     []byte{},
 		Timestamp:   uint64(time.Now().UnixNano()),
 	}
+
 	err = connInitMessage.WriteToUdp(conn)
 	if err != nil {
 		panic(err)
@@ -56,6 +57,7 @@ func StartUpdApp() (chan bool, error) {
 		}
 
 	}()
+	//TODO: need to do proper error handling.
 
 	go func() {
 		buf := make([]byte, 1024)
@@ -72,7 +74,6 @@ func StartUpdApp() (chan bool, error) {
 			}
 			fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
 			time.Sleep(1 * time.Second)
-
 		}
 	}()
 
@@ -83,9 +84,18 @@ func StartUpdApp() (chan bool, error) {
 func main() {
 
 	fmt.Println("hello world")
-	doneChan, err := StartUpdApp()
+	udpClientDoneChan, err := StartUpdApp()
 	if err != nil {
 		panic(err)
 	}
-	<-doneChan
+
+	httpServerDoneChan := make(chan bool, 1)
+	server := newServer("0.0.0.0:9001")
+	server.run(httpServerDoneChan)
+
+	select {
+	case <-udpClientDoneChan:
+		fmt.Println("received from  udpClientDoneChan ")
+	case <-httpServerDoneChan:
+	}
 }
