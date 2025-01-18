@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -47,6 +48,7 @@ func (manager *LiveEventManager[T]) register(sendChan chan<- T) (*Sub[T], error)
 	manager.subsMutex.Lock()
 	defer manager.subsMutex.Unlock()
 	manager.subs[sub.Id] = sub
+	fmt.Printf("registered the client: %v\n", sub.Id)
 	return sub, nil
 }
 
@@ -58,6 +60,7 @@ func (manager *LiveEventManager[T]) deregister(sub *Sub[T]) error {
 	defer manager.subsMutex.Unlock()
 
 	delete(manager.subs, sub.Id)
+	fmt.Printf("deregistering a client: %v\n", sub.Id)
 	return nil
 }
 

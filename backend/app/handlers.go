@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -42,12 +43,28 @@ func (h *Handlers) HandleWebSockets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer h.server.liveEventManager.deregister(sub)
-	for {
-		msg := <-msgChan
-		// fmt.Println("time: ", msg.ResponseTime)
 
-		r := newOkResult[Metrics, any](&msg)
-		bytes, _ := json.Marshal(&r)
-		conn.WriteMessage(websocket.TextMessage, bytes)
-	}
+	endClientChan := make(chan bool, 1)
+
+	go func() {
+		for {
+			if _, _, err := conn.NextReader(); err != nil {
+				endClientChan <- true
+				break
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			msg := <-msgChan
+			r := newOkResult[Metrics, any](&msg)
+			bytes, _ := json.Marshal(&r)
+			conn.WriteMessage(websocket.TextMessage, bytes)
+		}
+	}()
+
+	<-endClientChan
+
+	fmt.Println("HandleWebSockets ending")
 }

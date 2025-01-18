@@ -8,12 +8,12 @@ import (
 )
 
 type Metrics struct {
-	Id           string
-	Route        string
-	Method       string
-	StatusCode   uint16
-	ResponseTime float64
-	CreatedOn    time.Time
+	Id           string    `db:"id"`
+	Route        string    `db:"route"`
+	Method       string    `db:"method"`
+	StatusCode   uint16    `db:"statuscode"`
+	ResponseTime float64   `db:"responsetime"`
+	CreatedOn    time.Time `db:"createdon"`
 }
 
 func NewMetricsFromRawPayload(payload *HttpRouteMetricsPayload) *Metrics {

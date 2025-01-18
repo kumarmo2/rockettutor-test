@@ -7,6 +7,10 @@ function App() {
         ws.onmessage = (ev) => {
             console.log(ev);
         };
+
+        setTimeout(() => {
+            ws.close();
+        }, 4000);
     };
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: want to treat this useEffect as componentDidMount

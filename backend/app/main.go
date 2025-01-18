@@ -11,7 +11,7 @@ import (
 
 const dbName string = "rockettutor"
 
-func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error) {
+func StartUpdApp(liveEventManager *LiveEventManager[Metrics], metricsDao IMetricsDao) (chan bool, error) {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", "35.159.152.17:5000")
 
@@ -55,7 +55,7 @@ func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error)
 			if err != nil {
 				fmt.Println("error writing heartBeatPackage", err)
 			} else {
-				fmt.Println("successfully sent the heartBeat")
+				// fmt.Println("successfully sent the heartBeat")
 			}
 			time.Sleep(5 * time.Second)
 		}
@@ -78,8 +78,12 @@ func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error)
 			}
 			if pkg._deserializedMetricsData != nil {
 				metrics := NewMetricsFromRawPayload(pkg._deserializedMetricsData)
-				liveEventManager.broadcast(*metrics)
-				// fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
+				err = metricsDao.Create(metrics)
+				if err != nil {
+					fmt.Println("error while persisting metrics: ", err)
+				} else {
+					liveEventManager.broadcast(*metrics)
+				}
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -148,7 +152,9 @@ func main() {
 
 	go liveEventManager.startBackgroundProcessing()
 
-	udpClientDoneChan, err := StartUpdApp(liveEventManager)
+	metricsDao := newMetricsDao(db)
+
+	udpClientDoneChan, err := StartUpdApp(liveEventManager, metricsDao)
 	if err != nil {
 		panic(err)
 	}
