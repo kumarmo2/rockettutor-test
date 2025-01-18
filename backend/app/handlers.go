@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -32,8 +34,23 @@ func (h *Handlers) HandleWebSockets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	msgChan := make(chan Metrics)
+	sub, err := h.server.liveEventManager.register(msgChan)
+
+	if err != nil {
+		msg := "Internal Server Error. Please try again"
+		newErrResult[any](&msg).WriteHttpResponse(w, 500)
+		return
+	}
+	defer h.server.liveEventManager.deregister(sub)
 	for {
-		time.Sleep(1 * time.Second)
-		conn.WriteMessage(websocket.TextMessage, []byte("hello"))
+		msg := <-msgChan
+		// fmt.Println("time: ", msg.ResponseTime)
+
+		r := newOkResult[Metrics, any](&msg)
+		bytes, _ := json.Marshal(&r)
+		fmt.Println("writing message")
+		conn.WriteMessage(websocket.TextMessage, bytes)
 	}
 }

@@ -3,11 +3,12 @@ package main
 import "net/http"
 
 type Server struct {
-	addr string
+	addr             string
+	liveEventManager *LiveEventManager[Metrics]
 }
 
-func newServer(addr string) *Server {
-	return &Server{addr: addr}
+func newServer(addr string, liveEventManager *LiveEventManager[Metrics]) *Server {
+	return &Server{addr: addr, liveEventManager: liveEventManager}
 }
 
 func (s *Server) run(doneChan chan<- bool) {

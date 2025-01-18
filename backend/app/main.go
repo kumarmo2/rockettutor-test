@@ -6,12 +6,11 @@ import (
 	"time"
 )
 
-func StartUpdApp() (chan bool, error) {
+func StartUpdApp(liveEventManager *LiveEventManager[Metrics]) (chan bool, error) {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", "35.159.152.17:5000")
 
 	if err != nil {
-		// fmt.Println(err)
 		return nil, err
 	}
 
@@ -72,7 +71,11 @@ func StartUpdApp() (chan bool, error) {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
+			if pkg._deserializedMetricsData != nil {
+				metrics := NewMetricsFromRawPayload(pkg._deserializedMetricsData)
+				liveEventManager.broadcast(*metrics)
+				// fmt.Printf("payload: %+v\n", *pkg._deserializedMetricsData)
+			}
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -84,13 +87,18 @@ func StartUpdApp() (chan bool, error) {
 func main() {
 
 	fmt.Println("hello world")
-	udpClientDoneChan, err := StartUpdApp()
+	liveEventManager := newLiveEventManager[Metrics]()
+
+	go liveEventManager.startBackgroundProcessing()
+
+	udpClientDoneChan, err := StartUpdApp(liveEventManager)
 	if err != nil {
 		panic(err)
 	}
 
 	httpServerDoneChan := make(chan bool, 1)
-	server := newServer("0.0.0.0:9001")
+	server := newServer("0.0.0.0:9001", liveEventManager)
+
 	server.run(httpServerDoneChan)
 
 	select {
