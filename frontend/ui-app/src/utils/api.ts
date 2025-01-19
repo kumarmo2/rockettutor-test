@@ -1,4 +1,4 @@
-type ApiResult<T, E> = {
+export type ApiResult<T, E> = {
     ok: T;
     err: E;
 };
