@@ -6,7 +6,7 @@ import {
     Tooltip,
     XYChart,
 } from "@visx/xychart";
-import React, { FC, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { type ApiResult, get } from "./utils/api";
 import { RenderTooltipParams } from "@visx/xychart/lib/components/Tooltip";
 

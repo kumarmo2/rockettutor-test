@@ -25,4 +25,21 @@ services:
       volumes:
         - ./pgdata:/var/lib/postgresql/data
 
+  api:
+    build:
+      context: ./backend/app/
+      dockerfile: Dockerfile
+    network_mode: host
+    container_name: api-server
+
+  tutorui:
+    build:
+      context: ./frontend/ui-app/
+      dockerfile: Dockerfile
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    # ports:
+    #   - "5000:5000"
+    container_name: tutorui
+    network_mode: host
 
