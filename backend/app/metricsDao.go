@@ -1,9 +1,14 @@
 package main
 
-import "github.com/jmoiron/sqlx"
+import (
+	"time"
+
+	"github.com/jmoiron/sqlx"
+)
 
 type IMetricsDao interface {
 	Create(mode *Metrics) error
+	GetMetricsDataForEndpoint(route string, fromTime time.Time) ([]Metrics, error)
 }
 
 type MetricsDao struct {
@@ -20,4 +25,19 @@ func (dao *MetricsDao) Create(model *Metrics) error {
     `
 	_, err := dao.db.NamedExec(query, model)
 	return err
+}
+
+func (dao *MetricsDao) GetMetricsDataForEndpoint(route string, fromTime time.Time) ([]Metrics, error) {
+	query := `
+        select * from metrics.metrics where route = $1 and createdon >=$2 order by createdon
+    `
+	metrics := []Metrics{}
+
+	err := dao.db.Select(&metrics, query, route, fromTime)
+	if err != nil {
+		return nil, err
+
+	}
+
+	return metrics, nil
 }

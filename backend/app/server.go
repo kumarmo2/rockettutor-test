@@ -5,10 +5,11 @@ import "net/http"
 type Server struct {
 	addr             string
 	liveEventManager *LiveEventManager[Metrics]
+	metricsDao       IMetricsDao
 }
 
-func newServer(addr string, liveEventManager *LiveEventManager[Metrics]) *Server {
-	return &Server{addr: addr, liveEventManager: liveEventManager}
+func newServer(addr string, liveEventManager *LiveEventManager[Metrics], metricsDao IMetricsDao) *Server {
+	return &Server{addr: addr, liveEventManager: liveEventManager, metricsDao: metricsDao}
 }
 
 func (s *Server) run(doneChan chan<- bool) {
@@ -20,7 +21,7 @@ func (s *Server) run(doneChan chan<- bool) {
 		handler := newHandlers(s)
 
 		mux.HandleFunc("/api/ws", handler.HandleWebSockets)
-		mux.HandleFunc("GET /api/metrics", handler.GetMetricsHandler)
+		mux.HandleFunc("GET /api/metrics", handler.GetRouteMetricsForEndpointHandler)
 
 		http.ListenAndServe(s.addr, mux)
 	}()

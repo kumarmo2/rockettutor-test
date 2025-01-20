@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -19,6 +21,40 @@ func newHandlers(server *Server) *Handlers {
 
 func (h *Handlers) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
+}
+
+func (h *Handlers) GetRouteMetricsForEndpointHandler(w http.ResponseWriter, r *http.Request) {
+	route := r.URL.Query().Get("route")
+	latestWindowInMinutes := r.URL.Query().Get("latestWindowInMinutes")
+
+	if route == "" {
+		msg := "Empty route not valid"
+		newErrResult[any](&msg).WriteHttpResponse(w, 400)
+		return
+	}
+	if latestWindowInMinutes == "" {
+		msg := "Empty latestWindowInMinutes not valid"
+		newErrResult[any](&msg).WriteHttpResponse(w, 400)
+		return
+	}
+	latestWindowInMinutesInt, err := strconv.Atoi(latestWindowInMinutes)
+	if err != nil {
+		msg := "Invalid latestWindowInMinutes not valid"
+		newErrResult[any](&msg).WriteHttpResponse(w, 400)
+		return
+	}
+	fromTime := time.Now().UTC().Add(-time.Minute * time.Duration(latestWindowInMinutesInt))
+	metrics, err := h.server.metricsDao.GetMetricsDataForEndpoint(route, fromTime)
+	if err != nil {
+		fmt.Println("error while getting metrics: ", err)
+		msg := "Internal server error. Please try again!!"
+		newErrResult[any](&msg).WriteHttpResponse(w, 500)
+		return
+	}
+
+	fmt.Println("route:", route, "latestWindowInMinutes:", latestWindowInMinutes)
+	// res := map[string]string{"k1": "v1"}
+	newOkResult[[]Metrics, any](&metrics).WriteHttpResponse(w, 200)
 }
 
 func (h *Handlers) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {

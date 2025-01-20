@@ -160,7 +160,7 @@ func main() {
 	}
 
 	httpServerDoneChan := make(chan bool, 1)
-	server := newServer("0.0.0.0:9001", liveEventManager)
+	server := newServer("0.0.0.0:9001", liveEventManager, metricsDao)
 
 	server.run(httpServerDoneChan)
 
