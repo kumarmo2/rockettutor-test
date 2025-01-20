@@ -5,8 +5,12 @@ import {
     AnimatedAxis,
     AnimatedGrid,
     AnimatedLineSeries,
+    GlyphSeries,
     Tooltip,
 } from "@visx/xychart";
+
+import { curveBasis, curveMonotoneX, curveNatural } from "@visx/curve";
+import { Fragment } from "react";
 
 type Metrics = {
     id: string;
@@ -47,7 +51,7 @@ const usedColors = new Set<string>();
 //}));
 
 type Point = {
-    x: Date;
+    x: number;
     y: number;
 };
 
@@ -55,6 +59,7 @@ type MetricsChartDataItem = {
     route: string;
     data: Point[];
     color: string;
+    display: boolean;
 };
 
 const getNextUnusedColor = () => {
@@ -69,10 +74,16 @@ const getNextUnusedColor = () => {
     return "red";
 };
 
+const getXAxisLimits = () => {
+    const time = new Date().getTime();
+    return [time - 10 * 60 * 1000, time];
+};
+
 function App() {
     const [liveChartData, setLiveChartData] = useState<MetricsChartDataItem[]>(
         [],
     );
+    const [xAxisLimits, setXAxisLimits] = useState(getXAxisLimits);
     const liveChartDataRef = useRef<MetricsChartDataItem[]>([]);
     const startWebsocket = () => {
         const ws = new WebSocket("/api/ws");
@@ -84,7 +95,7 @@ function App() {
                     const metricsData = data.ok;
                     const route = metricsData.route;
                     const chartData = {
-                        x: new Date(metricsData.createdOn),
+                        x: new Date(metricsData.createdOn).getTime(),
                         y: metricsData.responseTime,
                     };
                     const liveChartData = liveChartDataRef.current;
@@ -93,10 +104,11 @@ function App() {
                         (d) => d.route === route,
                     );
                     if (!existingRouteLiveChartData) {
-                        const newRouteLiveChartData = {
+                        const newRouteLiveChartData: MetricsChartDataItem = {
                             route,
                             data: [chartData],
                             color: getNextUnusedColor(),
+                            display: true,
                         };
                         // TODO: do some sorting so that the order of the lines are not changed.
                         const newLiveChartData = [
@@ -128,6 +140,20 @@ function App() {
         };
     };
 
+    const chartUpdate = () => {
+        const xLimits = getXAxisLimits();
+        setXAxisLimits(xLimits);
+
+        setLiveChartData(
+            liveChartDataRef.current.map((ld) => {
+                return {
+                    ...ld,
+                    data: ld.data.filter((d) => d.x >= xLimits[0]),
+                };
+            }),
+        );
+    };
+
     // biome-ignore lint/correctness/useExhaustiveDependencies: want to treat this useEffect as componentDidMount
     useEffect(() => {
         const fn = async () => {
@@ -139,14 +165,27 @@ function App() {
         fn();
         startWebsocket();
 
-        const timer = setInterval(() => {
-            setLiveChartData(liveChartDataRef.current);
-        }, 5000);
+        const timer = setInterval(chartUpdate, 1000);
 
         return () => {
             clearInterval(timer);
         };
     }, []);
+
+    const handleRouteDisplayCheckboxClick = (ld: MetricsChartDataItem) => {
+        setLiveChartData(
+            liveChartDataRef.current.map((d) => {
+                if (d.route !== ld.route) {
+                    return d;
+                }
+                d.display = !d.display;
+                const newLd: MetricsChartDataItem = {
+                    ...d,
+                };
+                return newLd;
+            }),
+        );
+    };
 
     return (
         <div className="flex flex-col p-1 items-center h-full w-full">
@@ -155,94 +194,94 @@ function App() {
                 <XYChart
                     width={800}
                     height={400}
-                    xScale={{ type: "time" }}
-                    yScale={{ type: "linear" }}
+                    xScale={{ type: "time", domain: xAxisLimits }}
+                    yScale={{ type: "linear", domain: [0, 1000] }}
                 >
                     <AnimatedGrid columns={false} />
                     <AnimatedAxis
                         orientation="bottom"
-                        numTicks={5}
-                        tickFormat={(value) =>
-                            value.toLocaleTimeString("en-US", { hour12: false })
-                        }
+                        numTicks={4}
+                        //tickFormat={(value) =>
+                        //    value.toLocaleTimeString("en-US", { hour12: false })
+                        //}
                     />
                     <AnimatedAxis orientation="left" />
-                    {liveChartData.map((line) => (
-                        <AnimatedLineSeries
-                            key={line.route}
-                            dataKey={line.route}
-                            data={line.data}
-                            xAccessor={(d) => d?.x}
-                            yAccessor={(d) => d.y}
-                            stroke={line.color}
-                        />
-                    ))}
-                    {/*
+                    {liveChartData
+                        .filter((l) => l.display)
+                        .map((line) => {
+                            return (
+                                <AnimatedLineSeries
+                                    key={`line-${line.route}`}
+                                    dataKey={`line-${line.route}`}
+                                    data={line.data}
+                                    xAccessor={(d) => d?.x}
+                                    yAccessor={(d) => d.y}
+                                    stroke={line.color}
+                                />
+                            );
+                        })}
+                    {liveChartData
+                        .filter((l) => l.display)
+                        .map((line) => {
+                            return (
+                                <GlyphSeries
+                                    //curve={curveMonotoneX}
+                                    key={`glyph-${line.route}`}
+                                    dataKey={`glyph-${line.route}`}
+                                    data={line.data}
+                                    xAccessor={(d) => d?.x}
+                                    yAccessor={(d) => d.y}
+                                    renderGlyph={({ x, y }) => (
+                                        <circle
+                                            cx={x}
+                                            cy={y}
+                                            r={2} // Radius of the dots
+                                            fill={line.color} // Color of the dots
+                                        />
+                                    )}
+                                />
+                            );
+                        })}
                     <Tooltip
-                        showVerticalCrosshair
                         snapTooltipToDatumX
                         snapTooltipToDatumY
-                        renderTooltip={({ tooltipData }) => (
-                            <div>
+                        renderTooltip={({ tooltipData }) => {
+                            return (
                                 <div>
-                                    <strong>
-                                        {tooltipData?.nearestDatum?.key}
-                                    </strong>
+                                    <div>
+                                        <strong>
+                                            {tooltipData?.nearestDatum?.key}
+                                        </strong>
+                                    </div>
+                                    <div>
+                                        time:{" "}
+                                        {/* {tooltipData?.nearestDatum?.datum?.x?.toLocaleTimeString()}*/}
+                                    </div>
+                                    <div>
+                                        responseTime:{" "}
+                                        {tooltipData?.nearestDatum?.datum?.y}
+                                    </div>
                                 </div>
-                                <div>
-                                    x: {tooltipData?.nearestDatum?.datum?.x}
-                                </div>
-                                <div>
-                                    y: {tooltipData?.nearestDatum?.datum?.y}
-                                </div>
-                            </div>
-                        )}
-                    />*/}
+                            );
+                        }}
+                    />
                 </XYChart>
             </div>
-            <div>
-                {/*
-                <XYChart
-                    width={800}
-                    height={400}
-                    xScale={{ type: "linear" }}
-                    yScale={{ type: "linear" }}
-                >
-                    <AnimatedGrid columns={false} numTicks={4} />
-                    <AnimatedAxis orientation="bottom" />
-                    <AnimatedAxis orientation="left" />
-                    {data.map((line) => (
-                        <AnimatedLineSeries
-                            key={line.id}
-                            dataKey={line.id}
-                            data={line.data}
-                            xAccessor={(d) => d.x}
-                            yAccessor={(d) => d.y}
-                            stroke={line.color}
-                        />
-                    ))}
-                    <Tooltip
-                        showVerticalCrosshair
-                        snapTooltipToDatumX
-                        snapTooltipToDatumY
-                        renderTooltip={({ tooltipData }) => (
-                            <div>
-                                <div>
-                                    <strong>
-                                        {tooltipData?.nearestDatum?.key}
-                                    </strong>
-                                </div>
-                                <div>
-                                    x: {tooltipData?.nearestDatum?.datum?.x}
-                                </div>
-                                <div>
-                                    y: {tooltipData?.nearestDatum?.datum?.y}
-                                </div>
-                            </div>
-                        )}
-                    />
-                </XYChart>
-                */}
+            <div className="flex flex-col">
+                {liveChartData.map((ld) => {
+                    return (
+                        <div key={ld.route} className="flex">
+                            <input
+                                type="checkbox"
+                                onChange={() =>
+                                    handleRouteDisplayCheckboxClick(ld)
+                                }
+                                checked={ld.display}
+                            />
+                            <span>{ld.route}</span>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

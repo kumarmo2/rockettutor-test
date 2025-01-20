@@ -60,6 +60,7 @@ func (h *Handlers) HandleWebSockets(w http.ResponseWriter, r *http.Request) {
 			msg := <-msgChan
 			r := newOkResult[Metrics, any](&msg)
 			bytes, _ := json.Marshal(&r)
+			// fmt.Println("writing data to client")
 			conn.WriteMessage(websocket.TextMessage, bytes)
 		}
 	}()
